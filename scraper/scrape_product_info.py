@@ -8,7 +8,8 @@ from bs4 import BeautifulSoup
 
 def new_session():
     s = requests.Session()
-    s.headers.update({'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:137.0) Gecko/20100101 Firefox/137.0'})
+    s.headers.update(
+        {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:137.0) Gecko/20100101 Firefox/137.0'})
     return s
 
 
@@ -60,19 +61,38 @@ def get_data(product_link, px_list=None):
         try:
             data_dic['size_and_item'] = linkstore['page']['product']['currentSku']['size']
         except KeyError:
-            data_dic['size_and_item']=None
+            data_dic['size_and_item'] = None
 
         data_dic['price'] = linkstore['page']['product']['currentSku']['listPrice'].replace('$', '')
-        data_dic['rating'] = linkstore['page']['product']['productDetails']['rating']
-        data_dic['reviews_count'] = linkstore['page']['product']['productDetails']['reviews']
+        
+        try:
+            data_dic['rating'] = linkstore['page']['product']['productDetails']['rating']
+        except KeyError:
+            data_dic['rating'] = None
+
+        try:
+            data_dic['reviews_count'] = linkstore['page']['product']['productDetails']['reviews']
+        except KeyError:
+            data_dic['reviews_count'] = 0
+            
         data_dic['love_count'] = linkstore['page']['product']['productDetails']['lovesCount']
         data_dic['brand_id'] = linkstore['page']['product']['productDetails']['brand']['brandId']
         data_dic['brand_name'] = linkstore['page']['product']['productDetails']['brand']['displayName']
-        data_dic['ingredients'] = linkstore['page']['product']['currentSku']['ingredientDesc']
-        data_dic['limited_edition'] = linkstore['page']['product']['currentSku']['isLimitedEdition']
+        try:
+            data_dic['ingredients'] = linkstore['page']['product']['currentSku']['ingredientDesc']
+        except KeyError:
+            data_dic['ingredients'] = None
+        try:
+            data_dic['limited_edition'] = linkstore['page']['product']['currentSku']['isLimitedEdition']
+        except KeyError:
+            data_dic['limited_edition'] = False
+
         data_dic['new'] = linkstore['page']['product']['currentSku']['isNew']
         data_dic['exclusive'] = linkstore['page']['product']['currentSku']['isSephoraExclusive']
-        data_dic['online_only'] = linkstore['page']['product']['currentSku']['isOnlineOnly']
+        try:
+            data_dic['online_only'] = linkstore['page']['product']['currentSku']['isOnlineOnly']
+        except KeyError:
+            data_dic['online_only'] = False
         data_dic['highlights'] = ', '.join([
             hl['name']
             for hl in linkstore['page']['product']['currentSku']['highlights']
@@ -91,6 +111,7 @@ def get_data(product_link, px_list=None):
 px_list_ = [None]
 
 pd_links_df = pd.read_csv('data/product_links.csv')
+
 product_links = pd_links_df['product_links']
 result = []
 
@@ -98,8 +119,8 @@ for i, link in enumerate(product_links[:]):
     try:
         data = get_data(link, px_list_)
         result.append(data)
-    except KeyError:
-        print(f"!!! skipping {link}", file=sys.stderr)
+    except KeyError as e:
+        print(f"skipped {link} {e}", file=sys.stderr)
         pass
     pd_df = pd.DataFrame(result)
     pd_df.to_csv('data/pd_info.csv', index=False)
